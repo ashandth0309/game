@@ -1,0 +1,451 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Colorful Adventure Game</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            background: linear-gradient(135deg, #1a2a6c, #b21f1f, #fdbb2d);
+            font-family: 'Arial', sans-serif;
+            overflow: hidden;
+        }
+        
+        #game-container {
+            position: relative;
+            width: 400px;
+            height: 500px;
+            background-color: rgba(255, 255, 255, 0.1);
+            border-radius: 20px;
+            box-shadow: 0 0 30px rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(5px);
+            overflow: hidden;
+        }
+        
+        #game-canvas {
+            width: 100%;
+            height: 400px;
+            background-color: rgba(0, 0, 0, 0.2);
+        }
+        
+        #controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr 1fr;
+            grid-template-rows: 1fr 1fr;
+            gap: 10px;
+            padding: 20px;
+            height: 80px;
+        }
+        
+        .control-btn {
+            border: none;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.2);
+            color: white;
+            font-size: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+        }
+        
+        .control-btn:hover {
+            background: rgba(255, 255, 255, 0.4);
+            transform: scale(1.05);
+        }
+        
+        .control-btn:active {
+            transform: scale(0.95);
+        }
+        
+        #up-btn {
+            grid-column: 2;
+            grid-row: 1;
+        }
+        
+        #left-btn {
+            grid-column: 1;
+            grid-row: 2;
+        }
+        
+        #right-btn {
+            grid-column: 3;
+            grid-row: 2;
+        }
+        
+        #down-btn {
+            grid-column: 2;
+            grid-row: 2;
+        }
+        
+        #score-display {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            color: white;
+            font-size: 18px;
+            background: rgba(0, 0, 0, 0.3);
+            padding: 5px 10px;
+            border-radius: 10px;
+        }
+        
+        #game-over {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 400px;
+            background: rgba(0, 0, 0, 0.7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            color: white;
+            font-size: 24px;
+            display: none;
+        }
+        
+        #restart-btn {
+            margin-top: 20px;
+            padding: 10px 20px;
+            background: #4CAF50;
+            border: none;
+            border-radius: 5px;
+            color: white;
+            font-size: 16px;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+        
+        #restart-btn:hover {
+            background: #45a049;
+            transform: scale(1.05);
+        }
+        
+        .star {
+            position: absolute;
+            width: 20px;
+            height: 20px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="gold"><path d="M12 17.27L18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2 9.19 8.63 2 9.24l5.46 4.73L5.82 21z"/></svg>') no-repeat center center;
+            background-size: contain;
+            animation: pulse 1s infinite alternate;
+        }
+        
+        @keyframes pulse {
+            from { transform: scale(1); }
+            to { transform: scale(1.2); }
+        }
+        
+        .obstacle {
+            position: absolute;
+            width: 30px;
+            height: 30px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="red"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg>') no-repeat center center;
+            background-size: contain;
+            animation: spin 2s linear infinite;
+        }
+        
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+        
+        #player {
+            position: absolute;
+            width: 40px;
+            height: 40px;
+            background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="%23FF5722"><circle cx="12" cy="12" r="10"/><circle cx="12" cy="10" r="4" fill="%23FFC107"/><path d="M12 14c-3 0-5 1.5-5 3v1h10v-1c0-1.5-2-3-5-3z" fill="%23FFC107"/></svg>') no-repeat center center;
+            background-size: contain;
+            transition: transform 0.2s;
+        }
+        
+        #player.jump {
+            animation: jump 0.5s ease;
+        }
+        
+        @keyframes jump {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-30px); }
+        }
+    </style>
+</head>
+<body>
+    <div id="game-container">
+        <div id="game-canvas">
+            <div id="player"></div>
+            <div id="score-display">Score: 0</div>
+            <div id="game-over">
+                Game Over!
+                <div id="final-score">Score: 0</div>
+                <button id="restart-btn">Play Again</button>
+            </div>
+        </div>
+        <div id="controls">
+            <button id="up-btn" class="control-btn">↑</button>
+            <button id="left-btn" class="control-btn">←</button>
+            <button id="down-btn" class="control-btn">↓</button>
+            <button id="right-btn" class="control-btn">→</button>
+        </div>
+    </div>
+
+    <script>
+        // Game elements
+        const player = document.getElementById('player');
+        const gameCanvas = document.getElementById('game-canvas');
+        const scoreDisplay = document.getElementById('score-display');
+        const gameOverScreen = document.getElementById('game-over');
+        const finalScoreDisplay = document.getElementById('final-score');
+        const restartBtn = document.getElementById('restart-btn');
+        
+        // Control buttons
+        const upBtn = document.getElementById('up-btn');
+        const leftBtn = document.getElementById('left-btn');
+        const rightBtn = document.getElementById('right-btn');
+        const downBtn = document.getElementById('down-btn');
+        
+        // Game variables
+        let score = 0;
+        let gameRunning = true;
+        let playerX = 180;
+        let playerY = 180;
+        let playerSpeed = 5;
+        let stars = [];
+        let obstacles = [];
+        let starInterval;
+        let obstacleInterval;
+        let animationFrame;
+        
+        // Initialize game
+        function initGame() {
+            score = 0;
+            gameRunning = true;
+            playerX = 180;
+            playerY = 180;
+            stars = [];
+            obstacles = [];
+            
+            // Clear existing elements
+            document.querySelectorAll('.star, .obstacle').forEach(el => el.remove());
+            
+            // Update displays
+            scoreDisplay.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'none';
+            
+            // Position player
+            player.style.left = `${playerX}px`;
+            player.style.top = `${playerY}px`;
+            player.classList.remove('jump');
+            
+            // Start game loops
+            starInterval = setInterval(createStar, 2000);
+            obstacleInterval = setInterval(createObstacle, 3000);
+            animationFrame = requestAnimationFrame(updateGame);
+        }
+        
+        // Create a new star
+        function createStar() {
+            if (!gameRunning) return;
+            
+            const star = document.createElement('div');
+            star.className = 'star';
+            
+            // Random position
+            const x = Math.random() * (gameCanvas.offsetWidth - 20);
+            const y = Math.random() * (gameCanvas.offsetHeight - 20);
+            
+            star.style.left = `${x}px`;
+            star.style.top = `${y}px`;
+            
+            gameCanvas.appendChild(star);
+            stars.push({
+                element: star,
+                x: x,
+                y: y
+            });
+            
+            // Remove star after some time if not collected
+            setTimeout(() => {
+                if (star.parentNode) {
+                    gameCanvas.removeChild(star);
+                    stars = stars.filter(s => s.element !== star);
+                }
+            }, 5000);
+        }
+        
+        // Create a new obstacle
+        function createObstacle() {
+            if (!gameRunning) return;
+            
+            const obstacle = document.createElement('div');
+            obstacle.className = 'obstacle';
+            
+            // Random position
+            const x = Math.random() * (gameCanvas.offsetWidth - 30);
+            const y = Math.random() * (gameCanvas.offsetHeight - 30);
+            
+            obstacle.style.left = `${x}px`;
+            obstacle.style.top = `${y}px`;
+            
+            gameCanvas.appendChild(obstacle);
+            obstacles.push({
+                element: obstacle,
+                x: x,
+                y: y
+            });
+            
+            // Remove obstacle after some time
+            setTimeout(() => {
+                if (obstacle.parentNode) {
+                    gameCanvas.removeChild(obstacle);
+                    obstacles = obstacles.filter(o => o.element !== obstacle);
+                }
+            }, 7000);
+        }
+        
+        // Check collisions
+        function checkCollisions() {
+            // Player boundaries
+            const playerRect = {
+                left: playerX,
+                top: playerY,
+                right: playerX + 40,
+                bottom: playerY + 40
+            };
+            
+            // Check star collisions
+            for (let i = stars.length - 1; i >= 0; i--) {
+                const star = stars[i];
+                const starRect = {
+                    left: star.x,
+                    top: star.y,
+                    right: star.x + 20,
+                    bottom: star.y + 20
+                };
+                
+                if (isColliding(playerRect, starRect)) {
+                    // Collect star
+                    gameCanvas.removeChild(star.element);
+                    stars.splice(i, 1);
+                    score += 10;
+                    scoreDisplay.textContent = `Score: ${score}`;
+                    
+                    // Play collection effect
+                    player.classList.add('jump');
+                    setTimeout(() => player.classList.remove('jump'), 500);
+                }
+            }
+            
+            // Check obstacle collisions
+            for (const obstacle of obstacles) {
+                const obstacleRect = {
+                    left: obstacle.x,
+                    top: obstacle.y,
+                    right: obstacle.x + 30,
+                    bottom: obstacle.y + 30
+                };
+                
+                if (isColliding(playerRect, obstacleRect)) {
+                    gameOver();
+                    break;
+                }
+            }
+        }
+        
+        // Check if two rectangles are colliding
+        function isColliding(rect1, rect2) {
+            return !(
+                rect1.right < rect2.left || 
+                rect1.left > rect2.right || 
+                rect1.bottom < rect2.top || 
+                rect1.top > rect2.bottom
+            );
+        }
+        
+        // Game over
+        function gameOver() {
+            gameRunning = false;
+            clearInterval(starInterval);
+            clearInterval(obstacleInterval);
+            cancelAnimationFrame(animationFrame);
+            
+            finalScoreDisplay.textContent = `Score: ${score}`;
+            gameOverScreen.style.display = 'flex';
+        }
+        
+        // Update game state
+        function updateGame() {
+            if (!gameRunning) return;
+            
+            // Update player position
+            player.style.left = `${playerX}px`;
+            player.style.top = `${playerY}px`;
+            
+            // Check collisions
+            checkCollisions();
+            
+            // Continue game loop
+            animationFrame = requestAnimationFrame(updateGame);
+        }
+        
+        // Event listeners for buttons
+        upBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                playerY = Math.max(0, playerY - playerSpeed);
+            }
+        });
+        
+        downBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                playerY = Math.min(gameCanvas.offsetHeight - 40, playerY + playerSpeed);
+            }
+        });
+        
+        leftBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                playerX = Math.max(0, playerX - playerSpeed);
+                player.style.transform = 'scaleX(-1)';
+            }
+        });
+        
+        rightBtn.addEventListener('click', () => {
+            if (gameRunning) {
+                playerX = Math.min(gameCanvas.offsetWidth - 40, playerX + playerSpeed);
+                player.style.transform = 'scaleX(1)';
+            }
+        });
+        
+        // Keyboard controls
+        document.addEventListener('keydown', (e) => {
+            if (!gameRunning) return;
+            
+            switch(e.key) {
+                case 'ArrowUp':
+                    playerY = Math.max(0, playerY - playerSpeed);
+                    break;
+                case 'ArrowDown':
+                    playerY = Math.min(gameCanvas.offsetHeight - 40, playerY + playerSpeed);
+                    break;
+                case 'ArrowLeft':
+                    playerX = Math.max(0, playerX - playerSpeed);
+                    player.style.transform = 'scaleX(-1)';
+                    break;
+                case 'ArrowRight':
+                    playerX = Math.min(gameCanvas.offsetWidth - 40, playerX + playerSpeed);
+                    player.style.transform = 'scaleX(1)';
+                    break;
+            }
+        });
+        
+        // Restart button
+        restartBtn.addEventListener('click', initGame);
+        
+        // Start the game
+        initGame();
+    </script>
+</body>
+</html>
